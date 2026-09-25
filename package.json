@@ -11,7 +11,7 @@
     "monitor": "node src/index.js",
     "build": "node src/index.js --skip-fetch",
     "preview": "node src/index.js --skip-fetch --open",
-    "test": "node --test --test-isolation=none \"test/*.test.js\""
+    "test": "node test/run.mjs"
   },
   "dependencies": {
     "cheerio": "^1.0.0",
