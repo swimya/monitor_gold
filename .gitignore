@@ -1,0 +1,17 @@
+# 依赖
+node_modules/
+.npm-cache/
+
+# 构建产物（由 GitHub Actions 自动发布到 Pages，不需要提交）
+dist/
+
+# 本地临时/调试文件
+.scratch/
+*.log
+*.tmp
+
+# 编辑器 / 系统
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

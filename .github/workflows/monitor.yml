@@ -1,0 +1,142 @@
+name: 价格监控
+
+# =============================================================================
+#  每小时自动抓取一次价格 → 更新 data/history.json → 重新生成看板 → 发布到
+#  GitHub Pages（固定网址）。
+#
+#  也支持手动触发：仓库页面 → Actions → 价格监控 → Run workflow
+# =============================================================================
+
+on:
+  schedule:
+    # UTC 时间。每小时的第 7 分钟跑一次，避开整点高峰。
+    # 想更频繁可以改成 */30（每 30 分钟）或 */15（每 15 分钟）。
+    - cron: '7 * * * *'
+  workflow_dispatch:
+    inputs:
+      skipFetch:
+        description: '只重新生成页面，不抓取新价格'
+        type: boolean
+        default: false
+  push:
+    branches: [main, master]
+    paths:
+      - 'src/**'
+      - 'config/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/monitor.yml'
+
+# 同一时间只允许一个监控任务，避免两次运行互相覆盖数据
+concurrency:
+  group: price-monitor
+  cancel-in-progress: false
+
+permissions:
+  contents: write # 需要把 history.json 提交回仓库
+  pages: write
+  id-token: write
+
+jobs:
+  monitor:
+    name: 抓取价格并生成看板
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    outputs:
+      artifactReady: ${{ steps.ready.outputs.ok }}
+
+    steps:
+      - name: 拉取仓库
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: 安装 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: 安装依赖
+        run: npm ci --no-audit --no-fund
+
+      - name: 跑单元测试
+        run: npm test
+
+      - name: 计算看板的固定网址
+        id: site
+        run: |
+          OWNER='${{ github.repository_owner }}'
+          REPO='${{ github.event.repository.name }}'
+          if [ "$REPO" = "$OWNER.github.io" ]; then
+            BASE="https://$OWNER.github.io/"
+          else
+            BASE="https://$OWNER.github.io/$REPO/"
+          fi
+          echo "base=$BASE" >> "$GITHUB_OUTPUT"
+          echo "看板固定网址：$BASE"
+
+      - name: 抓取价格并生成页面
+        id: monitor
+        continue-on-error: true
+        env:
+          SITE_BASE_URL: ${{ steps.site.outputs.base }}
+        run: |
+          if [ '${{ inputs.skipFetch }}' = 'true' ]; then
+            node src/index.js --skip-fetch --out=dist
+          else
+            node src/index.js --out=dist
+          fi
+
+      - name: 把最新数据提交回仓库
+        if: always()
+        run: |
+          git config user.name  'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git config pull.rebase true
+          git add data/history.json
+          if git diff --staged --quiet; then
+            echo '数据没有变化，跳过提交'
+            exit 0
+          fi
+          git commit -m "chore(data): 更新价格数据 $(date -u +'%Y-%m-%d %H:%M UTC')"
+          git pull --rebase --autostash || true
+          git push
+
+      - name: 检查是否有可发布的产物
+        id: ready
+        if: always() && hashFiles('dist/index.html') != ''
+        run: echo 'ok=true' >> "$GITHUB_OUTPUT"
+
+      - name: 配置 GitHub Pages
+        if: steps.ready.outputs.ok == 'true'
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - name: 上传看板产物
+        if: steps.ready.outputs.ok == 'true'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+          retention-days: 7
+
+      # 全部商品都抓取失败时让这次运行变红，方便在 Actions 页面一眼看到异常
+      - name: 检查抓取结果
+        if: steps.monitor.outcome == 'failure'
+        run: |
+          echo '::error::本次所有商品都抓取失败，请检查配置、网络，或目标网站是否改版。'
+          exit 1
+
+  deploy:
+    name: 发布到 GitHub Pages
+    needs: monitor
+    if: always() && needs.monitor.outputs.artifactReady == 'true'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: 发布
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,132 @@
+# =============================================================================
+#  价格监控配置
+#  ---------------------------------------------------------------------------
+#  在这里增删要监控的商品即可，改完提交到 GitHub，定时任务会自动使用新配置。
+#  parser 说明见 README「解析器」章节。
+# =============================================================================
+
+# ---------------------------------------------------------------- 全局设置 ---
+settings:
+  # 网页标题
+  title: 黄金 / 金币价格监控
+  # 判定“昨天”所用时区。中国网站建议保持 Asia/Shanghai。
+  timezone: Asia/Shanghai
+  # 金额单位文案
+  currency: CNY
+  currencySymbol: '¥'
+  # 单价单位文案（有克重的商品会按 价格 / 克重 计算单价）
+  unitLabel: '元/克'
+  # 看板固定网址。GitHub Actions 运行时会自动注入真实网址（SITE_BASE_URL 环境变量优先），
+  # 所以 Fork 之后不改这里也没问题；本地预览时显示的就是下面这个地址。
+  siteBaseUrl: 'https://swimya.github.io/monitor_gold/'
+  # 抓取行为
+  request:
+    timeoutMs: 20000
+    retries: 3
+    concurrency: 4
+  # 历史数据保留策略
+  retention:
+    # 最近 N 天保留全部（按运行频率采样的）数据点，用于看日内走势
+    fullResolutionDays: 3
+    # 更早的数据只保留每天最后一个点，最多保留 N 天
+    dailyRetentionDays: 400
+
+# ---------------------------------------------------------------- 监控商品 ---
+items:
+  # ===== 默认监控：中国金币网（金币云商）商品 =============================
+  # 该站点是前端渲染的 SPA，页面本身不含价格，价格来自站点自己的 JSON 接口。
+  - id: cgc-mini-gold-1g-x3
+    name: 中国金币迷你金 1克（金币云商）3枚装
+    url: https://www.chinagoldcoin.net/products/110400105084005
+    enabled: true
+    parser: chinagoldcoin-pdp
+    parserOptions:
+      itemId: '110400105084005'
+      sellerId: 1
+      channelId: 1
+      spuId: '110400105084005'
+    # 克重：留空则自动读取接口里的 totalGramWeight（此商品为 3 克）。
+    # 也可以手填固定值，比如 3。
+    weightGrams: null
+    tags: [金币云商, 黄金]
+
+  # ===== 同一站点的熊猫金币实时报价（含克重，用于演示单价变化）============
+  # 接口：/api/trade/panda/chngc/price/panda/realTimePrice
+  - id: cgc-panda-1g
+    name: 熊猫金币 1克封装金币
+    url: https://www.chinagoldcoin.net/
+    enabled: true
+    parser: chinagoldcoin-panda-price
+    parserOptions:
+      code: SG006598
+      defaultWeightGrams: 1
+    tags: [熊猫金币, 黄金]
+
+  - id: cgc-panda-3g
+    name: 熊猫金币 3克封装金币
+    url: https://www.chinagoldcoin.net/
+    enabled: true
+    parser: chinagoldcoin-panda-price
+    parserOptions:
+      code: SG006600
+      defaultWeightGrams: 3
+    tags: [熊猫金币, 黄金]
+
+  - id: cgc-panda-15g
+    name: 熊猫金币 15克封装金币
+    url: https://www.chinagoldcoin.net/
+    enabled: true
+    parser: chinagoldcoin-panda-price
+    parserOptions:
+      code: SG006601
+      defaultWeightGrams: 15
+    tags: [熊猫金币, 黄金]
+
+  - id: cgc-panda-30g
+    name: 熊猫金币 30克封装金币
+    url: https://www.chinagoldcoin.net/
+    enabled: true
+    parser: chinagoldcoin-panda-price
+    parserOptions:
+      code: SG006603
+      defaultWeightGrams: 30
+    tags: [熊猫金币, 黄金]
+
+  # ===== 下面是“监控任意网站”的三种通用写法（默认关闭，按需改 enabled）=====
+
+  # 写法 A：网页是普通 HTML，用 CSS 选择器取价格
+  # - id: demo-html
+  #   name: 示例：用 CSS 选择器抓取
+  #   url: https://example.com/product/123
+  #   enabled: false
+  #   parser: html
+  #   parserOptions:
+  #     priceSelector: '.product-price .now'   # 取到的文本里抽出第一个数字
+  #     nameSelector: 'h1.product-title'       # 可选，不填就用上面手写的 name
+  #     weightSelector: '.product-weight'      # 可选，取到 "50克" 会解析成 50
+  #     # 页面需要特定请求头时：
+  #     headers: {}
+
+  # 写法 B：网站有 JSON 接口，用字段路径取价格
+  # - id: demo-json
+  #   name: 示例：调用 JSON 接口
+  #   url: https://example.com/product/123
+  #   enabled: false
+  #   parser: json
+  #   parserOptions:
+  #     endpoint: https://example.com/api/product/123
+  #     method: GET
+  #     pricePath: data.price
+  #     namePath: data.title
+  #     weightPath: data.weightGrams
+  #     headers: {}
+
+  # 写法 C：任何文本页面，用正则取价格
+  # - id: demo-regex
+  #   name: 示例：正则匹配
+  #   url: https://example.com/product/123
+  #   enabled: false
+  #   parser: regex
+  #   parserOptions:
+  #     pricePattern: '"price"\s*:\s*([0-9.]+)'
+  #     weightPattern: '(\d+(?:\.\d+)?)\s*克'

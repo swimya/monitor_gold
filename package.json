@@ -1,0 +1,20 @@
+{
+  "name": "price-monitor",
+  "version": "1.0.0",
+  "private": true,
+  "description": "配置驱动的网站价格监控与趋势展示系统（GitHub Actions 24 小时运行 + GitHub Pages 固定网址）",
+  "type": "module",
+  "engines": {
+    "node": ">=22.1"
+  },
+  "scripts": {
+    "monitor": "node src/index.js",
+    "build": "node src/index.js --skip-fetch",
+    "preview": "node src/index.js --skip-fetch --open",
+    "test": "node --test --test-isolation=none \"test/*.test.js\""
+  },
+  "dependencies": {
+    "cheerio": "^1.0.0",
+    "yaml": "^2.5.1"
+  }
+}
