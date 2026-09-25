@@ -109,7 +109,10 @@ jobs:
         run: echo 'ok=true' >> "$GITHUB_OUTPUT"
 
       - name: 配置 GitHub Pages
+        # GITHUB_TOKEN 有时没有创建 Pages 站点的权限（报 Resource not accessible by integration），
+        # 这时候不影响价格采集，去 Settings → Pages 把 Source 选成 GitHub Actions 即可。
         if: steps.ready.outputs.ok == 'true'
+        continue-on-error: true
         uses: actions/configure-pages@v5
         with:
           enablement: true

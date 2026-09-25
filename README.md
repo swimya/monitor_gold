@@ -316,8 +316,12 @@ GitHub Actions（每小时）
 ## 常见问题
 
 **Q：网址打开是 404？**
-A：第一次需要等 Pages 生效（1~2 分钟）。仍未生效就去 **Settings → Pages** 确认 Source 选的是 **GitHub Actions**。
-如果 `configure-pages` 步骤报权限错误，也需要在这里手动选一次。
+A：第一次需要等 Pages 生效（1~2 分钟）。仍未生效就去 **Settings → Pages**，
+把 **Source** 选成 **GitHub Actions**（不用选分支，本项目用工作流直接发布，不需要 `docs/` 目录）。
+
+**Q：Actions 日志里 “配置 GitHub Pages” 这步报 `Resource not accessible by integration`？**
+A：GitHub 有时不允许用工作流自带的 `GITHUB_TOKEN` 去**创建** Pages 站点（这步已经设成 `continue-on-error`，
+不会影响价格采集）。手工去 **Settings → Pages → Source** 选一次 **GitHub Actions** 就好了，之后永久生效。
 
 **Q：Actions 里报错 “Resource not accessible by integration” / push 失败？**
 A：仓库权限不足。**Settings → Actions → General → Workflow permissions** 选 **Read and write permissions**。
