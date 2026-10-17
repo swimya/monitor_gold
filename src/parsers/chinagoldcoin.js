@@ -34,11 +34,26 @@ function extractWeightFromExtra(extra) {
   return null;
 }
 
-/** 从 "1克封装金币" / "15克封装金币" 这样的名称里取克重 */
+/**
+ * 从商品名里推断克重（只在接口没给 totalGramWeight 时兜底）。
+ *   "招福传家·瑞蛇金条10克"        -> 10
+ *   "1克封装金币"                  -> 1
+ *   "中国金币迷你金1克…3枚装"      -> 3（1 克 × 3 枚）
+ *   "3枚装"                        -> null（只有件数没有单件重量，推不出来）
+ */
 export function weightFromName(name) {
   if (!name) return null;
-  const m = String(name).match(/(\d+(?:\.\d+)?)\s*(?:克|g|G|gram|grams)/);
-  return m ? parseNumber(m[1]) : null;
+  const text = String(name);
+  const perPiece = text.match(/(\d+(?:\.\d+)?)\s*(?:克|g(?![a-zA-Z])|G(?![a-zA-Z])|gram|grams)/);
+  const pieces = text.match(/(\d+)\s*(?:枚|件|个|盒|套)\s*装/);
+
+  const pieceWeight = perPiece ? parseNumber(perPiece[1]) : null;
+  const pieceCount = pieces ? parseNumber(pieces[1]) : null;
+
+  if (pieceWeight !== null && pieceCount !== null && pieceCount > 1) {
+    return parseNumber((pieceWeight * pieceCount).toFixed(4));
+  }
+  return pieceWeight;
 }
 
 function assertPositivePrice(price, item, source) {
@@ -104,7 +119,8 @@ export async function parseChinagoldcoinPdp(item, context) {
   assertPositivePrice(price, item, 'render/dynamic');
 
   const name = detail.name || staticData.name || item.name;
-  const weightGrams = item.weightGrams ?? extractWeightFromExtra(detail.extra);
+  // 克重优先级：配置手填 > 接口 totalGramWeight > 从商品名推断
+  const weightGrams = item.weightGrams ?? extractWeightFromExtra(detail.extra) ?? weightFromName(name);
 
   return {
     name,

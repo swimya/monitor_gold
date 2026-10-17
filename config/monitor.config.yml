@@ -50,6 +50,22 @@ items:
     weightGrams: null
     tags: [金币云商, 黄金]
 
+  # ===== 金条：接口没返回克重，靠商品名里的“10克”自动识别 =================
+  - id: cgc-snake-gold-bar-10g
+    name: 招福传家·瑞蛇金条 10克
+    url: https://www.chinagoldcoin.net/products/110400105097008
+    enabled: true
+    parser: chinagoldcoin-pdp
+    parserOptions:
+      itemId: '110400105097008'
+      sellerId: 1
+      channelId: 1
+      spuId: '110400105097008'
+    # 该商品接口返回的 totalGramWeight 是 0，解析器会退而从名称“10克”推断。
+    # 万一以后改名识别不到，把这里改成 10 写死即可。
+    weightGrams: null
+    tags: [金币云商, 金条]
+
   # ===== 同一站点的熊猫金币实时报价（含克重，用于演示单价变化）============
   # 接口：/api/trade/panda/chngc/price/panda/realTimePrice
   - id: cgc-panda-1g
